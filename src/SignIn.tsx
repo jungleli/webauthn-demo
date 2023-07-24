@@ -22,23 +22,67 @@ export default function SignIn() {
   };
 
   const handleRegister = async () => {
-    // Availability of `window.PublicKeyCredential` means WebAuthn is usable.
-    if (window.PublicKeyCredential && PublicKeyCredential.isConditionalMediationAvailable) {
-      const isCMA = await PublicKeyCredential.isConditionalMediationAvailable();
-      if (isCMA) {
-        const abortController = new AbortController();
-
-        const credential = await navigator.credentials.get({
-          publicKey: { challenge: new Uint8Array([117, 61, 252, 231, 191, 241]), rpId: "localhost" },
-          signal: abortController.signal,
-          mediation: "optional",
-        });
-        console.log("credential", credential);
+    try {
+      if (PublicKeyCredential?.isConditionalMediationAvailable) {
+        const isCMA = await PublicKeyCredential.isConditionalMediationAvailable();
+        if (isCMA) {
+          const abortController = new AbortController();
+          const newCredential = await navigator.credentials.create({
+            publicKey: {
+              challenge: new Uint8Array([117, 61, 252, 231, 191, 241]),
+              rp: {
+                name: "test local",
+              },
+              user: {
+                id: new Uint8Array([11, 11, 25, 11, 11, 21]),
+                name: "test",
+                displayName: "test account",
+              },
+              authenticatorSelection: { userVerification: "preferred" },
+              attestation: "direct",
+              pubKeyCredParams: [
+                {
+                  type: "public-key",
+                  alg: -7,
+                },
+              ],
+            },
+            signal: abortController.signal,
+          });
+          console.log("credential", newCredential);
+          // Then send credential to RP server
+        } else {
+          setErrorText("not support, switch to typical register flow");
+        }
       } else {
-        setErrorText("not support");
+        setErrorText("Error");
       }
-    } else {
-      setErrorText("Error");
+    } catch (error) {
+      setErrorText("Invalid handling");
+    }
+  };
+  const handleLogin = async () => {
+    try {
+      if (PublicKeyCredential?.isConditionalMediationAvailable) {
+        const isCMA = await PublicKeyCredential.isConditionalMediationAvailable();
+        if (isCMA) {
+          const abortController = new AbortController();
+
+          const credential = await navigator.credentials.get({
+            publicKey: { challenge: new Uint8Array([117, 61, 252, 231, 191, 241]), rpId: "localhost" },
+            signal: abortController.signal,
+            mediation: "optional",
+          });
+          console.log("credential", credential);
+          // Then send credential to RP server
+        } else {
+          setErrorText("not support, switch to typical login flow");
+        }
+      } else {
+        setErrorText("Error");
+      }
+    } catch (error) {
+      setErrorText("Invalid handling");
     }
   };
 
@@ -67,7 +111,7 @@ export default function SignIn() {
                 </Button>
               </Grid>
               <Grid item>
-                <Button type="submit" fullWidth variant="contained" sx={{ mt: 3, mb: 2 }}>
+                <Button type="submit" fullWidth variant="contained" sx={{ mt: 3, mb: 2 }} onClick={handleLogin}>
                   Authenticate
                 </Button>
               </Grid>
