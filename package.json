@@ -14,6 +14,8 @@
     "@types/node": "^16.18.39",
     "@types/react": "^18.2.15",
     "@types/react-dom": "^18.2.7",
+    "dexie": "^3.2.4",
+    "dexie-react-hooks": "^1.1.6",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-scripts": "5.0.1",
@@ -44,5 +46,11 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "msw": "^1.2.3"
+  },
+  "msw": {
+    "workerDirectory": "public"
   }
 }

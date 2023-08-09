@@ -52,6 +52,17 @@ export default function SignIn() {
             signal: abortController.signal,
           });
           console.log("credential", newCredential);
+          fetch("/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, credential: newCredential }),
+          })
+            .then((response) => {
+              console.log("=======response", response);
+              return response.json();
+            })
+            .then((data) => console.log("=======success", data))
+            .catch((error) => console.error(error.message));
           // Then send credential to RP server
         } else {
           setErrorText("not support, switch to typical register flow");
