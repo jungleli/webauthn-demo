@@ -7,6 +7,7 @@ import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Container from "@mui/material/Container";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
+import { generateRandomChallenge } from "./helper";
 
 const defaultTheme = createTheme();
 
@@ -29,16 +30,17 @@ export default function SignIn() {
         const isCMA = await PublicKeyCredential.isConditionalMediationAvailable();
         if (isCMA) {
           const abortController = new AbortController();
-          const newCredential = await navigator.credentials.create({
+          const challenge = generateRandomChallenge();
+          const credential = (await navigator.credentials.create({
             publicKey: {
-              challenge: new Uint8Array([117, 61, 252, 231, 191, 241]),
+              challenge: Uint8Array.from(atob(challenge), (c) => c.charCodeAt(0)),
               rp: {
-                name: username,
+                name: "WebAuthn Demo",
               },
               user: {
-                id: new Uint8Array([11, 11, 25, 11, 11, 21]),
+                id: new Uint8Array(16),
                 name: username,
-                displayName: "test account",
+                displayName: username,
               },
               authenticatorSelection: { userVerification: "preferred" },
               attestation: "direct",
@@ -50,20 +52,23 @@ export default function SignIn() {
               ],
             },
             signal: abortController.signal,
-          });
-          console.log("credential", newCredential);
-          fetch("/register", {
+          })) as PublicKeyCredential;
+
+          // Extract the attestation object and client data JSON from the response
+          const attestationObject = (credential.response as AuthenticatorAttestationResponse).attestationObject;
+          const clientDataJSON = credential.response.clientDataJSON;
+
+          const response = await fetch("http://localhost:3030/register", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username, credential: newCredential }),
-          })
-            .then((response) => {
-              console.log("=======response", response);
-              return response.json();
-            })
-            .then((data) => console.log("=======success", data))
-            .catch((error) => console.error(error.message));
-          // Then send credential to RP server
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ attestationObject, clientDataJSON }),
+          });
+          const result = await response.text();
+
+          console.log(result);
+          console.log("credential", credential);
         } else {
           setErrorText("not support, switch to typical register flow");
         }
