@@ -36,7 +36,6 @@ export default function SignIn() {
               challenge: Uint8Array.from(atob(challenge), (c) => c.charCodeAt(0)),
               rp: {
                 name: "WebAuthn Demo",
-                id: "localhost",
               },
               user: {
                 id: new Uint8Array(16),
@@ -94,12 +93,12 @@ export default function SignIn() {
             publicKey: {
               rpId: "localhost",
               challenge: new Uint8Array([...atob(challenge)].map((c) => c.charCodeAt(0))),
-              allowCredentials: [
-                {
-                  type: "public-key",
-                  id: new Uint8Array(16), // Replace with the actual credential ID from registration
-                },
-              ],
+              //   allowCredentials: [
+              //     {
+              //       type: "public-key",
+              //       id: new Uint8Array(16), // Replace with the actual credential ID from registration
+              //     },
+              //   ],
             },
             signal: abortController.signal,
             mediation: "optional",
