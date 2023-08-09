@@ -36,6 +36,7 @@ export default function SignIn() {
               challenge: Uint8Array.from(atob(challenge), (c) => c.charCodeAt(0)),
               rp: {
                 name: "WebAuthn Demo",
+                id: "localhost",
               },
               user: {
                 id: new Uint8Array(16),
@@ -63,7 +64,7 @@ export default function SignIn() {
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({ attestationObject, clientDataJSON }),
+            body: JSON.stringify({ attestationObject, clientDataJSON, username }),
           });
           const result = await response.text();
 
@@ -86,13 +87,46 @@ export default function SignIn() {
         if (isCMA) {
           const abortController = new AbortController();
 
-          const credential = await navigator.credentials.get({
-            publicKey: { challenge: new Uint8Array([117, 61, 252, 231, 191, 241]), rpId: "localhost" },
+          const challenge = generateRandomChallenge(); // Generate a cryptographically secure random challenge
+
+          // Request user's credentials for login
+          const credential = (await navigator.credentials.get({
+            publicKey: {
+              rpId: "localhost",
+              challenge: new Uint8Array([...atob(challenge)].map((c) => c.charCodeAt(0))),
+              allowCredentials: [
+                {
+                  type: "public-key",
+                  id: new Uint8Array(16), // Replace with the actual credential ID from registration
+                },
+              ],
+            },
             signal: abortController.signal,
             mediation: "optional",
+          })) as PublicKeyCredential;
+
+          // Extract the authenticatorData from the response
+          const response = credential.response as AuthenticatorAssertionResponse;
+          const authenticatorData = new Uint8Array(response.authenticatorData);
+
+          // Convert the authenticatorData to base64 for sending to the server
+          const authenticatorDataBase64 = btoa(String.fromCharCode(...authenticatorData));
+
+          const loginResponse = await fetch("http://localhost:3030/login", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ username, authenticatorData: authenticatorDataBase64 }),
           });
+
+          if (loginResponse.ok) {
+            const result = await loginResponse.text();
+            console.log(result);
+          } else {
+            console.error("Login failed:", loginResponse.statusText);
+          }
           console.log("credential", credential);
-          // Then send credential to RP server
         } else {
           setErrorText("not support, switch to typical login flow");
         }
