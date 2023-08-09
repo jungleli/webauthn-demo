@@ -12,6 +12,8 @@ const defaultTheme = createTheme();
 
 export default function SignIn() {
   const [errorText, setErrorText] = useState("");
+  const [username, setUsername] = useState("");
+
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
@@ -31,11 +33,11 @@ export default function SignIn() {
             publicKey: {
               challenge: new Uint8Array([117, 61, 252, 231, 191, 241]),
               rp: {
-                name: "test local",
+                name: username,
               },
               user: {
                 id: new Uint8Array([11, 11, 25, 11, 11, 21]),
-                name: "test",
+                name: username,
                 displayName: "test account",
               },
               authenticatorSelection: { userVerification: "preferred" },
@@ -86,6 +88,9 @@ export default function SignIn() {
     }
   };
 
+  const handleUsernameChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setUsername(event.target.value);
+  };
   return (
     <ThemeProvider theme={defaultTheme}>
       <Container component="main" maxWidth="xs">
@@ -102,11 +107,22 @@ export default function SignIn() {
             WebAuthn Demo
           </Typography>
           <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mt: 1 }}>
-            <TextField margin="normal" required fullWidth id="username" label="username" name="username" autoComplete="webauthn" autoFocus />
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              id="username"
+              label="username"
+              name="username"
+              value={username}
+              onChange={handleUsernameChange}
+              autoComplete="webauthn"
+              autoFocus
+            />
             {/* <TextField fullWidth name="password" label="Password" type="password" id="password" autoComplete="current-password" /> */}
             <Grid container spacing={2}>
               <Grid item>
-                <Button type="submit" fullWidth variant="contained" sx={{ mt: 3, mb: 2 }} onClick={handleRegister}>
+                <Button fullWidth variant="contained" sx={{ mt: 3, mb: 2 }} onClick={handleRegister}>
                   Register
                 </Button>
               </Grid>
