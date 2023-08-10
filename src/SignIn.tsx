@@ -12,7 +12,7 @@ import { generateRandomChallenge } from "./helper";
 const defaultTheme = createTheme();
 
 export default function SignIn() {
-  const [errorText, setErrorText] = useState("");
+  const [msgText, setMsgText] = useState("");
   const [username, setUsername] = useState("");
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -33,7 +33,7 @@ export default function SignIn() {
           const challenge = generateRandomChallenge();
           const credential = (await navigator.credentials.create({
             publicKey: {
-              challenge: Uint8Array.from(atob(challenge), (c) => c.charCodeAt(0)),
+              challenge: new Uint8Array([117, 61, 252, 231, 191, 241]), //Uint8Array.from(atob(challenge), (c) => c.charCodeAt(0)),
               rp: {
                 name: "WebAuthn Demo",
               },
@@ -55,28 +55,31 @@ export default function SignIn() {
           })) as PublicKeyCredential;
 
           // Extract the attestation object and client data JSON from the response
-          const attestationObject = (credential.response as AuthenticatorAttestationResponse).attestationObject;
-          const clientDataJSON = credential.response.clientDataJSON;
+          const attestationObject = new Uint8Array((credential.response as AuthenticatorAttestationResponse).attestationObject);
+          const clientDataJSON = new Uint8Array(credential.response.clientDataJSON);
+
+          const authenticatorBase64 = btoa(String.fromCharCode(...attestationObject));
+          const clientDataJSONBase64 = btoa(String.fromCharCode(...clientDataJSON));
 
           const response = await fetch("http://localhost:3030/register", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({ attestationObject, clientDataJSON, username }),
+            body: JSON.stringify({ attestationObject: authenticatorBase64, clientDataJSON: clientDataJSONBase64, username }),
           });
           const result = await response.text();
 
-          console.log(result);
+          setMsgText(result);
           console.log("credential", credential);
         } else {
-          setErrorText("not support, switch to typical register flow");
+          setMsgText("not support, switch to typical register flow");
         }
       } else {
-        setErrorText("Error");
+        setMsgText("Error");
       }
     } catch (error) {
-      setErrorText("Invalid handling");
+      setMsgText("Invalid handling");
     }
   };
   const handleLogin = async () => {
@@ -92,13 +95,7 @@ export default function SignIn() {
           const credential = (await navigator.credentials.get({
             publicKey: {
               rpId: "localhost",
-              challenge: new Uint8Array([...atob(challenge)].map((c) => c.charCodeAt(0))),
-              //   allowCredentials: [
-              //     {
-              //       type: "public-key",
-              //       id: new Uint8Array(16), // Replace with the actual credential ID from registration
-              //     },
-              //   ],
+              challenge: new Uint8Array([117, 61, 252, 231, 191, 241]), //new Uint8Array([...atob(challenge)].map((c) => c.charCodeAt(0))),
             },
             signal: abortController.signal,
             mediation: "optional",
@@ -121,19 +118,19 @@ export default function SignIn() {
 
           if (loginResponse.ok) {
             const result = await loginResponse.text();
-            console.log(result);
+            setMsgText(result);
           } else {
-            console.error("Login failed:", loginResponse.statusText);
+            setMsgText(`Login failed: ${loginResponse.statusText}`);
           }
           console.log("credential", credential);
         } else {
-          setErrorText("not support, switch to typical login flow");
+          setMsgText("not support, switch to typical login flow");
         }
       } else {
-        setErrorText("Error");
+        setMsgText("Error");
       }
     } catch (error) {
-      setErrorText("Invalid handling");
+      setMsgText("Invalid handling");
     }
   };
 
@@ -182,7 +179,7 @@ export default function SignIn() {
               </Grid>
             </Grid>
           </Box>
-          <Box color="danger">{errorText}</Box>
+          <Box color="danger">{msgText}</Box>
         </Box>
       </Container>
     </ThemeProvider>
