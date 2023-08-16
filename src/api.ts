@@ -6,6 +6,6 @@ export async function fetchChallenge(bodyData: { username: string }) {
     },
     body: JSON.stringify(bodyData),
   });
-  const data = await response.json();
-  return data;
+  
+  return response;
 }

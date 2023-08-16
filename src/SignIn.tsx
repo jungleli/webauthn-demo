@@ -26,112 +26,125 @@ export default function SignIn() {
   };
 
   const handleRegister = async () => {
-    const { challengeId, challenge, rpName } = await fetchChallenge({ username });
-    try {
-      if (PublicKeyCredential?.isConditionalMediationAvailable) {
-        const isCMA = await PublicKeyCredential.isConditionalMediationAvailable();
-        if (isCMA) {
-          const abortController = new AbortController();
-          const credential = (await navigator.credentials.create({
-            publicKey: {
-              challenge: base64URLDecode(challenge), //Uint8Array.from(atob(challenge), (c) => c.charCodeAt(0)),
-              rp: {
-                name: rpName,
-              },
-              user: {
-                id: new Uint8Array(16),
-                name: username,
-                displayName: username,
-              },
-              authenticatorSelection: { userVerification: "preferred" },
-              attestation: "direct",
-              pubKeyCredParams: [
-                {
-                  type: "public-key",
-                  alg: -7,
+    const response = await fetchChallenge({ username });
+    if (response.ok) {
+      const { challengeId, challenge, rpName } = await response.json();
+      try {
+        if (PublicKeyCredential?.isConditionalMediationAvailable) {
+          const isCMA = await PublicKeyCredential.isConditionalMediationAvailable();
+          if (isCMA) {
+            const abortController = new AbortController();
+            const credential = (await navigator.credentials.create({
+              publicKey: {
+                challenge: base64URLDecode(challenge), //Uint8Array.from(atob(challenge), (c) => c.charCodeAt(0)),
+                rp: {
+                  name: rpName,
                 },
-              ],
-            },
-            signal: abortController.signal,
-          })) as PublicKeyCredential;
+                user: {
+                  id: new Uint8Array(16),
+                  name: username,
+                  displayName: username,
+                },
+                authenticatorSelection: { userVerification: "preferred" },
+                attestation: "direct",
+                pubKeyCredParams: [
+                  {
+                    type: "public-key",
+                    alg: -7,
+                  },
+                ],
+              },
+              signal: abortController.signal,
+            })) as PublicKeyCredential;
 
-          // Extract the attestation object and client data JSON from the response
-          const attestationObject = new Uint8Array((credential.response as AuthenticatorAttestationResponse).attestationObject);
-          const clientDataJSON = new Uint8Array(credential.response.clientDataJSON);
+            // Extract the attestation object and client data JSON from the response
+            const attestationObject = new Uint8Array((credential.response as AuthenticatorAttestationResponse).attestationObject);
+            const clientDataJSON = new Uint8Array(credential.response.clientDataJSON);
 
-          const authenticatorBase64 = btoa(String.fromCharCode(...attestationObject));
-          const clientDataJSONBase64 = btoa(String.fromCharCode(...clientDataJSON));
+            const authenticatorBase64 = btoa(String.fromCharCode(...attestationObject));
+            const clientDataJSONBase64 = btoa(String.fromCharCode(...clientDataJSON));
 
-          const response = await fetch("http://localhost:3030/register", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ attestationObject: authenticatorBase64, clientDataJSON: clientDataJSONBase64, username, challengeId }),
-          });
-          const result = await response.text();
+            const response = await fetch("http://localhost:3030/register", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ attestationObject: authenticatorBase64, clientDataJSON: clientDataJSONBase64, username, challengeId }),
+            });
+            const result = await response.text();
 
-          setMsgText(result);
-          console.log("credential", credential);
+            setMsgText(result);
+            console.log("credential", credential);
+          } else {
+            setMsgText("not support, switch to typical register flow");
+          }
         } else {
-          setMsgText("not support, switch to typical register flow");
+          setMsgText("Error");
         }
-      } else {
-        setMsgText("Error");
+      } catch (error) {
+        setMsgText("Invalid handling");
       }
-    } catch (error) {
-      setMsgText("Invalid handling");
+    } else {
+      setMsgText(await response.text());
     }
   };
   const handleLogin = async () => {
-    try {
-      if (PublicKeyCredential?.isConditionalMediationAvailable) {
-        const isCMA = await PublicKeyCredential.isConditionalMediationAvailable();
-        if (isCMA) {
-          const abortController = new AbortController();
-
-          const challenge = generateRandomChallenge(); // Generate a cryptographically secure random challenge
-
-          // Request user's credentials for login
-          const credential = (await navigator.credentials.get({
-            publicKey: {
-              rpId: "localhost",
-              challenge: new Uint8Array([117, 61, 252, 231, 191, 241]), //new Uint8Array([...atob(challenge)].map((c) => c.charCodeAt(0))),
-            },
-            signal: abortController.signal,
-            mediation: "optional",
-          })) as PublicKeyCredential;
-
-          // Extract the authenticatorData from the response
-          const response = credential.response as AuthenticatorAssertionResponse;
-          const authenticatorData = new Uint8Array(response.authenticatorData);
-
-          // Convert the authenticatorData to base64 for sending to the server
-          const authenticatorDataBase64 = btoa(String.fromCharCode(...authenticatorData));
-
-          const loginResponse = await fetch("http://localhost:3030/login", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ username, authenticatorData: authenticatorDataBase64 }),
-          });
-
-          if (loginResponse.ok) {
-            const result = await loginResponse.text();
-            setMsgText(result);
+    const response = await fetchChallenge({ username });
+    if (response.ok) {
+      const { challengeId, challenge, rpId } = await response.json();
+      try {
+        if (PublicKeyCredential?.isConditionalMediationAvailable) {
+          const isCMA = await PublicKeyCredential.isConditionalMediationAvailable();
+          if (isCMA) {
+            const abortController = new AbortController();
+  
+            // Request user's credentials for login
+            const credential = (await navigator.credentials.get({
+              publicKey: {
+                rpId,
+                challenge: base64URLDecode(challenge),
+              },
+              signal: abortController.signal,
+              mediation: "optional",
+            })) as PublicKeyCredential;
+  
+            // Extract the authenticatorData from the response
+            const response = credential.response as AuthenticatorAssertionResponse;
+            const authenticatorData = new Uint8Array(response.authenticatorData);
+            const clientDataJSON = new Uint8Array(response.clientDataJSON);
+            const signature = new Uint8Array(response.signature);
+  
+            // Convert the authenticatorData to base64 for sending to the server
+            const authenticatorDataBase64 = btoa(String.fromCharCode(...authenticatorData));
+            const clientDataJSONBase64 = btoa(String.fromCharCode(...clientDataJSON));
+            const signatureBase64 = btoa(String.fromCharCode(...signature));
+  
+            const loginResponse = await fetch("http://localhost:3030/login", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ username, authenticatorData: authenticatorDataBase64, clientDataJSON: clientDataJSONBase64, challengeId, signature: signatureBase64 }),
+            });
+  
+            if (loginResponse.ok) {
+              const result = await loginResponse.text();
+              setMsgText(result);
+            } else {
+              setMsgText(`Login failed: ${loginResponse.statusText}`);
+            }
+            console.log("credential", credential);
           } else {
-            setMsgText(`Login failed: ${loginResponse.statusText}`);
+            setMsgText("not support, switch to typical login flow");
           }
-          console.log("credential", credential);
         } else {
-          setMsgText("not support, switch to typical login flow");
+          setMsgText("Error");
         }
-      } else {
-        setMsgText("Error");
+      } catch (error) {
+        setMsgText("Invalid handling");
       }
-    } catch (error) {
-      setMsgText("Invalid handling");
+    } else {
+      setMsgText(await response.text());
     }
   };
 
