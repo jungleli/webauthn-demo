@@ -26,7 +26,7 @@ export default function SignIn() {
   };
 
   const handleRegister = async () => {
-    const { challengeId, challenge } = await fetchChallenge();
+    const { challengeId, challenge, rpName } = await fetchChallenge({ username });
     try {
       if (PublicKeyCredential?.isConditionalMediationAvailable) {
         const isCMA = await PublicKeyCredential.isConditionalMediationAvailable();
@@ -36,7 +36,7 @@ export default function SignIn() {
             publicKey: {
               challenge: base64URLDecode(challenge), //Uint8Array.from(atob(challenge), (c) => c.charCodeAt(0)),
               rp: {
-                name: "WebAuthn Demo",
+                name: rpName,
               },
               user: {
                 id: new Uint8Array(16),
