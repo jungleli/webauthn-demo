@@ -7,7 +7,8 @@ import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Container from "@mui/material/Container";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
-import { generateRandomChallenge } from "./helper";
+import { base64URLDecode, generateRandomChallenge } from "./helper";
+import { fetchChallenge } from "./api";
 
 const defaultTheme = createTheme();
 
@@ -25,15 +26,15 @@ export default function SignIn() {
   };
 
   const handleRegister = async () => {
+    const { challengeId, challenge } = await fetchChallenge();
     try {
       if (PublicKeyCredential?.isConditionalMediationAvailable) {
         const isCMA = await PublicKeyCredential.isConditionalMediationAvailable();
         if (isCMA) {
           const abortController = new AbortController();
-          const challenge = generateRandomChallenge();
           const credential = (await navigator.credentials.create({
             publicKey: {
-              challenge: new Uint8Array([117, 61, 252, 231, 191, 241]), //Uint8Array.from(atob(challenge), (c) => c.charCodeAt(0)),
+              challenge: base64URLDecode(challenge), //Uint8Array.from(atob(challenge), (c) => c.charCodeAt(0)),
               rp: {
                 name: "WebAuthn Demo",
               },
@@ -66,7 +67,7 @@ export default function SignIn() {
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({ attestationObject: authenticatorBase64, clientDataJSON: clientDataJSONBase64, username }),
+            body: JSON.stringify({ attestationObject: authenticatorBase64, clientDataJSON: clientDataJSONBase64, username, challengeId }),
           });
           const result = await response.text();
 
