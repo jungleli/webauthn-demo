@@ -26,7 +26,7 @@ export default function SignIn() {
   };
 
   const handleRegister = async () => {
-    const response = await fetchChallenge({ username });
+    const response = await fetchChallenge({ username, type: "register" });
     if (response.ok) {
       const { challengeId, challenge, rpName } = await response.json();
       try {
@@ -89,7 +89,7 @@ export default function SignIn() {
     }
   };
   const handleLogin = async () => {
-    const response = await fetchChallenge({ username });
+    const response = await fetchChallenge({ username, type: "login" });
     if (response.ok) {
       const { challengeId, challenge, rpId } = await response.json();
       try {
@@ -97,7 +97,7 @@ export default function SignIn() {
           const isCMA = await PublicKeyCredential.isConditionalMediationAvailable();
           if (isCMA) {
             const abortController = new AbortController();
-  
+
             // Request user's credentials for login
             const credential = (await navigator.credentials.get({
               publicKey: {
@@ -107,26 +107,32 @@ export default function SignIn() {
               signal: abortController.signal,
               mediation: "optional",
             })) as PublicKeyCredential;
-  
+
             // Extract the authenticatorData from the response
             const response = credential.response as AuthenticatorAssertionResponse;
             const authenticatorData = new Uint8Array(response.authenticatorData);
             const clientDataJSON = new Uint8Array(response.clientDataJSON);
             const signature = new Uint8Array(response.signature);
-  
+
             // Convert the authenticatorData to base64 for sending to the server
             const authenticatorDataBase64 = btoa(String.fromCharCode(...authenticatorData));
             const clientDataJSONBase64 = btoa(String.fromCharCode(...clientDataJSON));
             const signatureBase64 = btoa(String.fromCharCode(...signature));
-  
+
             const loginResponse = await fetch("http://localhost:3030/login", {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
               },
-              body: JSON.stringify({ username, authenticatorData: authenticatorDataBase64, clientDataJSON: clientDataJSONBase64, challengeId, signature: signatureBase64 }),
+              body: JSON.stringify({
+                username,
+                authenticatorData: authenticatorDataBase64,
+                clientDataJSON: clientDataJSONBase64,
+                challengeId,
+                signature: signatureBase64,
+              }),
             });
-  
+
             if (loginResponse.ok) {
               const result = await loginResponse.text();
               setMsgText(result);

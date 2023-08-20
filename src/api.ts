@@ -1,4 +1,4 @@
-export async function fetchChallenge(bodyData: { username: string }) {
+export async function fetchChallenge(bodyData: { username: string; type: string }) {
   const response = await fetch("http://localhost:3030/generate-challenge", {
     method: "POST",
     headers: {
@@ -6,6 +6,6 @@ export async function fetchChallenge(bodyData: { username: string }) {
     },
     body: JSON.stringify(bodyData),
   });
-  
+
   return response;
 }
