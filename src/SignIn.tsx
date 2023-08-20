@@ -9,8 +9,17 @@ import Container from "@mui/material/Container";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { base64URLDecode, bufferToBase64URLString, generateRandomChallenge } from "./helper";
 import { fetchChallenge } from "./api";
+import { TextareaAutosize } from "@mui/material";
 
 const defaultTheme = createTheme();
+
+const outputLog = (element: any, title: string, output: string) => {
+  let str = "";
+  str += `// ${title}\n`;
+  str += `${output}\n`;
+
+  element.innerHTML += `${str}\n`;
+};
 
 export default function SignIn() {
   const [msgText, setMsgText] = useState("");
@@ -61,7 +70,7 @@ export default function SignIn() {
             };
 
             if (logRef.current) {
-              logRef.current.innerText = JSON.stringify(publicKey);
+              outputLog(logRef.current, "Registration credential publicKey", JSON.stringify(publicKey, null, 2));
             }
             const credential = (await navigator.credentials.create({
               publicKey,
@@ -85,7 +94,7 @@ export default function SignIn() {
               },
             };
 
-            logRef.current.innerText = JSON.stringify(requestData);
+            outputLog(logRef.current, "Registration credential response", JSON.stringify(requestData, null, 2));
 
             const response = await fetch("http://localhost:3030/register", {
               method: "POST",
@@ -130,31 +139,26 @@ export default function SignIn() {
               signal: abortController.signal,
               mediation: "optional",
             })) as PublicKeyCredential;
-
             // Extract the authenticatorData from the response
-            const response = credential.response as AuthenticatorAssertionResponse;
-            const authenticatorData = new Uint8Array(response.authenticatorData);
-            const clientDataJSON = new Uint8Array(response.clientDataJSON);
-            const signature = new Uint8Array(response.signature);
+            const { authenticatorData, clientDataJSON, signature } = credential.response as AuthenticatorAssertionResponse;
+            outputLog(logRef.current, "Login credential response", JSON.stringify(credential.response, null, 2));
 
-            // Convert the authenticatorData to base64 for sending to the server
-            const authenticatorDataBase64 = btoa(String.fromCharCode(...authenticatorData));
-            const clientDataJSONBase64 = btoa(String.fromCharCode(...clientDataJSON));
-            const signatureBase64 = btoa(String.fromCharCode(...signature));
-
+            const bodyData = {
+              username,
+              authenticatorData: bufferToBase64URLString(authenticatorData),
+              clientDataJSON: bufferToBase64URLString(clientDataJSON),
+              challengeId,
+              signature: bufferToBase64URLString(signature),
+            };
             const loginResponse = await fetch("http://localhost:3030/login", {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
               },
-              body: JSON.stringify({
-                username,
-                authenticatorData: authenticatorDataBase64,
-                clientDataJSON: clientDataJSONBase64,
-                challengeId,
-                signature: signatureBase64,
-              }),
+              body: JSON.stringify(bodyData),
             });
+
+            outputLog(logRef.current, "Login bodyData", JSON.stringify(bodyData, null, 2));
 
             if (loginResponse.ok) {
               const result = await loginResponse.text();
@@ -222,8 +226,13 @@ export default function SignIn() {
               </Grid>
             </Grid>
           </Box>
-          <Box ref={logRef}></Box>
-          <Box color="danger">{msgText}</Box>
+          <Box color="red" fontWeight="bold">
+            {msgText}
+          </Box>
+
+          <Box width="900px">
+            <TextareaAutosize style={{ width: "100%" }} minRows={3} ref={logRef}></TextareaAutosize>
+          </Box>
         </Box>
       </Container>
     </ThemeProvider>
