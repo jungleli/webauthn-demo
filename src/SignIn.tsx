@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import Button from "@mui/material/Button";
 import CssBaseline from "@mui/material/CssBaseline";
 import TextField from "@mui/material/TextField";
@@ -7,7 +7,7 @@ import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Container from "@mui/material/Container";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
-import { base64URLDecode, generateRandomChallenge } from "./helper";
+import { base64URLDecode, bufferToBase64URLString, generateRandomChallenge } from "./helper";
 import { fetchChallenge } from "./api";
 
 const defaultTheme = createTheme();
@@ -15,6 +15,7 @@ const defaultTheme = createTheme();
 export default function SignIn() {
   const [msgText, setMsgText] = useState("");
   const [username, setUsername] = useState("");
+  const logRef = useRef(null);
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -34,42 +35,64 @@ export default function SignIn() {
           const isCMA = await PublicKeyCredential.isConditionalMediationAvailable();
           if (isCMA) {
             const abortController = new AbortController();
-            const credential = (await navigator.credentials.create({
-              publicKey: {
-                challenge: base64URLDecode(challenge), //Uint8Array.from(atob(challenge), (c) => c.charCodeAt(0)),
-                rp: {
-                  name: rpName,
-                },
-                user: {
-                  id: new Uint8Array(16),
-                  name: username,
-                  displayName: username,
-                },
-                authenticatorSelection: { userVerification: "preferred" },
-                attestation: "direct",
-                pubKeyCredParams: [
-                  {
-                    type: "public-key",
-                    alg: -7,
-                  },
-                ],
+
+            const publicKey: PublicKeyCredentialCreationOptions = {
+              challenge: base64URLDecode(challenge), //Uint8Array.from(atob(challenge), (c) => c.charCodeAt(0)),
+              rp: {
+                name: rpName,
               },
+              user: {
+                id: new Uint8Array(16),
+                name: username,
+                displayName: username,
+              },
+              authenticatorSelection: { userVerification: "preferred" },
+              attestation: "direct",
+              pubKeyCredParams: [
+                {
+                  type: "public-key",
+                  alg: -7,
+                },
+                {
+                  type: "public-key",
+                  alg: -257,
+                },
+              ],
+            };
+
+            if (logRef.current) {
+              logRef.current.innerText = JSON.stringify(publicKey);
+            }
+            const credential = (await navigator.credentials.create({
+              publicKey,
               signal: abortController.signal,
             })) as PublicKeyCredential;
 
-            // Extract the attestation object and client data JSON from the response
-            const attestationObject = new Uint8Array((credential.response as AuthenticatorAttestationResponse).attestationObject);
-            const clientDataJSON = new Uint8Array(credential.response.clientDataJSON);
+            const credentialResponse = credential.response as AuthenticatorAttestationResponse;
+            const { id, rawId, type } = credential;
+            const requestData = {
+              username,
+              challengeId,
+              authData: {
+                id,
+                rawId: bufferToBase64URLString(rawId),
+                type,
+                attestationObject: bufferToBase64URLString(credentialResponse.attestationObject),
+                clientDataJSON: bufferToBase64URLString(credentialResponse.clientDataJSON),
+                publicKeyAlgorithm: credentialResponse.getPublicKeyAlgorithm(),
+                publicKey: bufferToBase64URLString(credentialResponse.getPublicKey()),
+                authenticatorData: bufferToBase64URLString(credentialResponse.getAuthenticatorData()),
+              },
+            };
 
-            const authenticatorBase64 = btoa(String.fromCharCode(...attestationObject));
-            const clientDataJSONBase64 = btoa(String.fromCharCode(...clientDataJSON));
+            logRef.current.innerText = JSON.stringify(requestData);
 
             const response = await fetch("http://localhost:3030/register", {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
               },
-              body: JSON.stringify({ attestationObject: authenticatorBase64, clientDataJSON: clientDataJSONBase64, username, challengeId }),
+              body: JSON.stringify(requestData),
             });
             const result = await response.text();
 
@@ -199,6 +222,7 @@ export default function SignIn() {
               </Grid>
             </Grid>
           </Box>
+          <Box ref={logRef}></Box>
           <Box color="danger">{msgText}</Box>
         </Box>
       </Container>
