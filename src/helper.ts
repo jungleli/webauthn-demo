@@ -5,7 +5,7 @@ const generateRandomChallenge = () => {
   return btoa(String.fromCharCode(...array));
 };
 
-function base64URLDecode(base64URL: string): ArrayBuffer {
+function base64URLToArrayBuffer(base64URL: string): ArrayBuffer {
   let base64 = base64URL.replace(/-/g, "+").replace(/_/g, "/");
 
   while (base64.length % 4 !== 0) {
@@ -36,4 +36,4 @@ export function bufferToBase64URLString(buffer: ArrayBuffer): string {
   return base64String.replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
 
-export { generateRandomChallenge, base64URLDecode };
+export { generateRandomChallenge, base64URLToArrayBuffer };
