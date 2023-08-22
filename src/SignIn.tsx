@@ -7,7 +7,7 @@ import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Container from "@mui/material/Container";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
-import { base64URLDecode, bufferToBase64URLString, generateRandomChallenge } from "./helper";
+import { base64URLToArrayBuffer, bufferToBase64URLString } from "./helper";
 import { fetchOptions, parsedRegisterOptions } from "./api";
 import { TextareaAutosize } from "@mui/material";
 
@@ -123,7 +123,7 @@ export default function SignIn() {
         if (isCMA) {
           const abortController = new AbortController();
           const credential = (await navigator.credentials.get({
-            publicKey: { ...publicKeyOptions, challenge: base64URLDecode(publicKeyOptions.challenge) },
+            publicKey: { ...publicKeyOptions, challenge: base64URLToArrayBuffer(publicKeyOptions.challenge) },
             signal: abortController.signal,
             mediation: "optional",
           })) as PublicKeyCredential;
